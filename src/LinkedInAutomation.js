@@ -1,49 +1,59 @@
-// src/LinkedInAutomation.js
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
-const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-const socket = io(backendUrl, {
-  transports: ["websocket"],
-  withCredentials: true,
-}); // Connect to your backend server
+const socket = io("http://localhost:3001");
 
 function LinkedInAutomation() {
-  const [status, setStatus] = useState(""); // Track current status messages
-  const [pageContent, setPageContent] = useState(""); // Track HTML content
+  const [status, setStatus] = useState("");
+  const [screenshots, setScreenshots] = useState([]);
 
   useEffect(() => {
-    // Listen for updates from the server
-    socket.on("status", (data) => setStatus(data));
-    socket.on("pageContent", (data) => setPageContent(data));
+    // Listen for status updates
+    socket.on("status", (newStatus) => {
+      setStatus(newStatus);
+    });
 
-    // Clean up the WebSocket connection when the component unmounts
+    // Listen for new screenshots
+    socket.on("screenshot", (newScreenshot) => {
+      setScreenshots((prevScreenshots) => [...prevScreenshots, newScreenshot]);
+    });
+
     return () => {
       socket.off("status");
-      socket.off("pageContent");
+      socket.off("screenshot");
     };
   }, []);
 
   const startAutomation = async () => {
-    await fetch(`${backendUrl}/start-linkedin-update`, {
-      method: "POST",
-    });
+    try {
+      await fetch("http://localhost:3001/start-linkedin-update", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Error starting automation:", error);
+    }
   };
 
+  // console.log("screenshots", screenshots);
+
   return (
-    <div style={{ padding: "20px" }}>
+    <div>
+      <h1>LinkedIn Profile Automation</h1>
       <button onClick={startAutomation}>Start LinkedIn Automation</button>
-      <h3>Status: {status}</h3>
-      <div
-        style={{
-          border: "1px solid #ccc",
-          padding: "10px",
-          marginTop: "20px",
-          overflowY: "scroll",
-          maxHeight: "400px",
-        }}
-        dangerouslySetInnerHTML={{ __html: pageContent }}
-      />
+      <p>Status: {status}</p>
+      <div>
+        <h2>Screenshots</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {screenshots.map((screenshot, index) => (
+            <img
+              key={index}
+              src={screenshot}
+              alt={`Screenshot ${index + 1}`}
+              style={{ width: "300px", border: "1px solid #ccc" }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
